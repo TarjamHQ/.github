@@ -5,7 +5,7 @@
   
   <a href="https://tarjam.ai/">
       <img
-        src=".github/assets/tarjam-logo.png"
+        src="../.github/assets/tarjam-logo.png"
         alt="Tarjam AI Logo"
         height="150"
       >
@@ -29,21 +29,21 @@ discord community soon.
 <h3 align="left">
   <a href="https://tarjam.ai/">
         <img
-            src=".github/assets/tarjam-web.png"
+            src="../.github/assets/tarjam-web.png"
             height="40"
             alt="Visit Our Website!"
         >
   </a>
   <a href="https://www.instagram.com/tarjam.ai/">
         <img
-            src=".github/assets/tarjam-instagram.png"
+            src="../.github/assets/tarjam-instagram.png"
             height="40"
             alt="Follow Us On Instagram!"
         >
   </a>
   <a href="https://discord.gg/#">
     <img
-        src=".github/assets/tarjam-discord.png"
+        src="../.github/assets/tarjam-discord.png"
         height="40"
         alt="Join Our Discord!"
     >
