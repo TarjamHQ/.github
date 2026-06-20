@@ -1,0 +1,149 @@
+name: Reusable Node CI
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version used by CI.
+        required: false
+        type: string
+        default: "22"
+      package-manager:
+        description: Package manager used by the repository (npm or pnpm).
+        required: false
+        type: string
+        default: pnpm
+      package-manager-version:
+        description: pnpm version; ignored when package-manager is npm.
+        required: false
+        type: string
+        default: "10.34.4"
+      lockfile-path:
+        description: Lockfile used for dependency caching.
+        required: false
+        type: string
+        default: pnpm-lock.yaml
+      working-directory:
+        description: Directory containing package.json.
+        required: false
+        type: string
+        default: "."
+      install-command:
+        description: Dependency installation command.
+        required: false
+        type: string
+        default: pnpm install --frozen-lockfile
+      test-command:
+        description: Test and coverage command.
+        required: false
+        type: string
+        default: pnpm test:coverage
+      coverage-path:
+        description: Coverage artifact path.
+        required: false
+        type: string
+        default: coverage/
+      coverage-artifact-name:
+        description: Uploaded coverage artifact name.
+        required: false
+        type: string
+        default: coverage
+      build-command:
+        description: Production build command.
+        required: false
+        type: string
+        default: pnpm build
+      build-path:
+        description: Build artifact path.
+        required: false
+        type: string
+        default: dist/
+      build-artifact-name:
+        description: Uploaded build artifact name.
+        required: false
+        type: string
+        default: app-build
+      artifact-retention-days:
+        description: Number of days to retain CI artifacts.
+        required: false
+        type: number
+        default: 7
+
+permissions:
+  contents: read
+
+jobs:
+  test-coverage:
+    name: Test and coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.package-manager-version }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ inputs.package-manager }}
+          cache-dependency-path: ${{ inputs.working-directory }}/${{ inputs.lockfile-path }}
+
+      - name: Install dependencies
+        run: ${{ inputs.install-command }}
+
+      - name: Run tests with coverage
+        run: ${{ inputs.test-command }}
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.coverage-artifact-name }}
+          path: ${{ inputs.working-directory }}/${{ inputs.coverage-path }}
+          if-no-files-found: error
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+  build:
+    name: Production build
+    needs: test-coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.package-manager-version }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ inputs.package-manager }}
+          cache-dependency-path: ${{ inputs.working-directory }}/${{ inputs.lockfile-path }}
+
+      - name: Install dependencies
+        run: ${{ inputs.install-command }}
+
+      - name: Build application
+        run: ${{ inputs.build-command }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.build-artifact-name }}
+          path: ${{ inputs.working-directory }}/${{ inputs.build-path }}
+          if-no-files-found: error
+          retention-days: ${{ inputs.artifact-retention-days }}
