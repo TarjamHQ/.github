@@ -1,0 +1,103 @@
+name: Reusable Python CI
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version used by CI.
+        required: false
+        type: string
+        default: "3.12"
+      working-directory:
+        description: Directory containing the project.
+        required: false
+        type: string
+        default: "."
+      use-uv:
+        description: Use uv for dependency management instead of pip.
+        required: false
+        type: boolean
+        default: false
+      uv-version:
+        description: uv version to install; ignored when use-uv is false.
+        required: false
+        type: string
+        default: latest
+      install-command:
+        description: Dependency installation command.
+        required: false
+        type: string
+        default: pip install -r requirements.txt
+      lint-command:
+        description: Lint command; skipped when empty.
+        required: false
+        type: string
+        default: ""
+      typecheck-command:
+        description: Type-check command; skipped when empty.
+        required: false
+        type: string
+        default: ""
+      test-command:
+        description: Test and coverage command.
+        required: false
+        type: string
+        default: pytest --cov=. --cov-report=xml
+      coverage-path:
+        description: Coverage artifact path.
+        required: false
+        type: string
+        default: coverage.xml
+      artifact-retention-days:
+        description: Number of days to retain CI artifacts.
+        required: false
+        type: number
+        default: 7
+
+permissions:
+  contents: read
+
+jobs:
+  python-ci:
+    name: Python test and coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+
+      - name: Install uv
+        if: inputs.use-uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ inputs.uv-version }}
+
+      - name: Install dependencies
+        run: ${{ inputs.install-command }}
+
+      - name: Lint
+        if: inputs.lint-command != ''
+        run: ${{ inputs.lint-command }}
+
+      - name: Type check
+        if: inputs.typecheck-command != ''
+        run: ${{ inputs.typecheck-command }}
+
+      - name: Run tests with coverage
+        run: ${{ inputs.test-command }}
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: ${{ inputs.working-directory }}/${{ inputs.coverage-path }}
+          retention-days: ${{ inputs.artifact-retention-days }}
