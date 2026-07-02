@@ -31,3 +31,20 @@ jobs:
       test-command: npm run test:cov
       build-command: npm run build
 ```
+
+## Python Static Analysis
+
+Call the shared ruff/mypy workflow from a Python application:
+
+```yaml
+jobs:
+  static-analysis:
+    uses: TarjamHQ/.github/.github/workflows/python-static-analysis.yml@main
+    with:
+      install-command: uv sync --locked
+      typecheck-command: uv run mypy .
+```
+
+The calling repository controls the working directory, install command, and
+which checks run — `ruff-check-command`, `ruff-format-command`, and
+`typecheck-command` each skip their step when set to an empty string.
