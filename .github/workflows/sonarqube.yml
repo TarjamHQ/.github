@@ -1,0 +1,97 @@
+name: Reusable SonarQube Scan
+
+on:
+  workflow_call:
+    inputs:
+      project-key:
+        description: SonarQube project key.
+        required: true
+        type: string
+      project-name:
+        description: SonarQube project display name.
+        required: true
+        type: string
+      working-directory:
+        description: Directory to run the scan from.
+        required: false
+        type: string
+        default: "."
+      sources:
+        description: Comma-separated list of source directories relative to working-directory.
+        required: false
+        type: string
+        default: "."
+      coverage-artifact-name:
+        description: Name of the coverage artifact to download; skipped when empty.
+        required: false
+        type: string
+        default: ""
+      coverage-report-path:
+        description: Path to the coverage report file for SonarQube ingestion.
+        required: false
+        type: string
+        default: ""
+      language:
+        description: Primary language — javascript or python (controls coverage report property).
+        required: false
+        type: string
+        default: javascript
+      quality-gate-wait:
+        description: Block the workflow until the SonarQube quality gate result is available.
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      SONAR_TOKEN:
+        required: true
+      SONAR_HOST_URL:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  sonarqube:
+    name: SonarQube scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage artifact
+        if: inputs.coverage-artifact-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.coverage-artifact-name }}
+          path: ${{ inputs.working-directory }}/${{ inputs.coverage-artifact-name }}
+
+      - name: Build SonarQube arguments
+        id: sonar-args
+        shell: bash
+        run: |
+          ARGS="-Dsonar.projectKey=${{ inputs.project-key }}"
+          ARGS="$ARGS -Dsonar.projectName=${{ inputs.project-name }}"
+          ARGS="$ARGS -Dsonar.sources=${{ inputs.sources }}"
+          ARGS="$ARGS -Dsonar.qualitygate.wait=${{ inputs.quality-gate-wait }}"
+
+          if [ -n "${{ inputs.coverage-report-path }}" ]; then
+            if [ "${{ inputs.language }}" = "python" ]; then
+              ARGS="$ARGS -Dsonar.python.coverage.reportPaths=${{ inputs.coverage-report-path }}"
+            else
+              ARGS="$ARGS -Dsonar.javascript.lcov.reportPaths=${{ inputs.coverage-report-path }}"
+            fi
+          fi
+
+          echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+
+      - name: Run SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: ${{ inputs.working-directory }}
+          args: ${{ steps.sonar-args.outputs.args }}
