@@ -1,0 +1,71 @@
+name: Reusable Python Static Analysis
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version used by static analysis.
+        required: false
+        type: string
+        default: "3.12"
+      working-directory:
+        description: Directory containing the project.
+        required: false
+        type: string
+        default: "."
+      install-command:
+        description: Dependency installation command.
+        required: false
+        type: string
+        default: uv sync --all-extras --dev
+      ruff-check-command:
+        description: Ruff lint command; skipped when empty.
+        required: false
+        type: string
+        default: uv run ruff check --output-format=github
+      ruff-format-command:
+        description: Ruff format-check command; skipped when empty.
+        required: false
+        type: string
+        default: uv run ruff format --check
+      typecheck-command:
+        description: Mypy type-check command; skipped when empty.
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install ${{ inputs.python-version }}
+
+      - name: Install the project
+        run: ${{ inputs.install-command }}
+
+      - name: Ruff check
+        if: inputs.ruff-check-command != ''
+        run: ${{ inputs.ruff-check-command }}
+
+      - name: Ruff check formatting
+        if: inputs.ruff-format-command != ''
+        run: ${{ inputs.ruff-format-command }}
+
+      - name: Mypy type check
+        if: inputs.typecheck-command != ''
+        run: ${{ inputs.typecheck-command }}
